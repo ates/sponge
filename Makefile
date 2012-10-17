@@ -3,8 +3,13 @@ DEBUG = true
 PROFILE = false
 LIBS = ERL_LIBS=apps:deps
 
+.PHONY: deps
+
 compile:
 	@$(REBAR) compile
+
+deps:
+	@$(REBAR) get-deps
 
 clean:
 	@$(REBAR) clean
