@@ -1,6 +1,6 @@
 {application, sponge, [
     {description, ""},
-    {registered, [sponge_warehouse, sponge_killer]},
+    {registered, [sponge_warehouse, sponge_sweeper]},
     {vsn, "0.0.1"},
     {applications, [kernel, stdlib]},
     {mod, {sponge_app, []}}

@@ -1,4 +1,4 @@
--module(sponge_killer).
+-module(sponge_sweeper).
 
 -behaviour(gen_server).
 
