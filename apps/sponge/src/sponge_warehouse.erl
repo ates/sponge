@@ -37,6 +37,26 @@ init([Nodes]) ->
     end,
     {ok, #state{}}.
 
+handle_call({get, Key}, _From, State) ->
+    Result = case mnesia:dirty_read(?TABLE, Key) of
+        [] ->
+            undefined;
+        [Entry] when is_record(Entry, ?TABLE) ->
+            Entry#sponge_warehouse.value
+    end,
+    {reply, Result, State};
+handle_call({set, Entry}, _From, State) ->
+    Key = Entry#sponge_warehouse.key,
+    TTL = Entry#sponge_warehouse.ttl,
+    case mnesia:transaction(fun() -> mnesia:write(Entry) end) of
+        {atomic, ok} ->
+            {ok, _} = timer:send_after(TTL, sponge_killer, {kill, Key}),
+            {reply, ok, State};
+        Error ->
+            ?ERROR("Can't do transaction: ~p~n", [Error]),
+            {reply, Error, State}
+    end;
+
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
 handle_call(_Request, _From, State) -> {reply, ok, State}.

@@ -10,19 +10,14 @@ start() ->
 
 
 get(Key) ->
-    mnesia:dirty_read(entry, Key).
+    gen_server:call(sponge_warehouse, {get, Key}).
 
 set(Key, Value) ->
     set(Key, Value, ?DEFAULT_TTL).
 
-set(Key, Value, TTL) ->
+set(Key, Value, TTL) when is_integer(TTL) ->
     Entry = #sponge_warehouse{key = Key, value = Value, ttl = TTL},
-    F = fun() -> mnesia:write(?TABLE, Entry) end,
-    case mnesia:transaction(F) of
-        {atomic, ok} ->
-            {ok, _} = timer:send_after(TTL, sponge_killer, {kill, Key});
-        Error -> ?ERROR("SET ERROR: ~p~n", [Error])
-    end.
+    gen_server:call(sponge_warehouse, {set, Entry}).
 
 incr(Key) ->
     incr(Key, 1).
