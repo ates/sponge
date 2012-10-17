@@ -50,9 +50,6 @@ handle_call({get, Key}, _From, State) ->
             Entry#sponge_warehouse.value
     end,
     {reply, Result, State};
-handle_call({set, Key, Value, default}, _From, State) ->
-    do_set(Key, Value, State#state.ttl),
-    {reply, ok, State};
 handle_call({set, Key, Value, TTL}, _From, State) when is_integer(TTL) ->
     do_set(Key, Value, TTL),
     {reply, ok, State};

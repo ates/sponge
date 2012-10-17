@@ -16,7 +16,7 @@ get(Key) ->
     gen_server:call(sponge_warehouse, {get, Key}).
 
 set(Key, Value) ->
-    set(Key, Value, default).
+    set(Key, Value, 0).
 
 set(Key, Value, TTL) ->
     gen_server:call(sponge_warehouse, {set, Key, Value, TTL}).
