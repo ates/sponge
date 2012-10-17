@@ -2,3 +2,4 @@ ebin
 deps
 log
 .eunit
+rel/sponge
