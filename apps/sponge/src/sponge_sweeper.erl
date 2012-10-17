@@ -11,7 +11,9 @@
 
 -include("sponge.hrl").
 
--record(state, {timer :: reference(), ttl :: pos_integer()}).
+-define(DEFAULT_INTERVAL, 3600).
+
+-record(state, {timer :: reference(), interval :: pos_integer()}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -20,9 +22,9 @@ sweep(Key) ->
     gen_server:cast(?MODULE, {sweep, Key}).
 
 init([]) ->
-    Timeout = sponge_lib:get_option(ttl, ?DEFAULT_TTL),
-    Timer = erlang:send_after(Timeout, self(), expire_all),
-    {ok, #state{timer = Timer, ttl = Timeout}}.
+    Interval = sponge_lib:get_option(ttl, ?DEFAULT_TTL),
+    Timer = erlang:send_after(Interval, self(), expire_all),
+    {ok, #state{timer = Timer, interval = Interval * 1000}}.
 
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
@@ -40,7 +42,7 @@ handle_info(expire_all, State) ->
     Guard = fun(E) -> E#sponge_warehouse.expired_at =< Now end,
     Fun = fun(E) -> sweep_entry(E#sponge_warehouse.key) end,
     traverse_all(Guard, Fun),
-    Timer = erlang:send_after(State#state.ttl, self(), expire_all),
+    Timer = erlang:send_after(State#state.interval, self(), expire_all),
     {noreply, State#state{timer = Timer}};
 
 handle_info(_Msg, State) ->
