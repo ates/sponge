@@ -14,5 +14,5 @@ get_option(Option, Default) ->
     end.
 
 timestamp() ->
-    {MegaSecs, Secs, _} = erlang:now(),
+    {MegaSecs, Secs, _} = os:timestamp(),
     MegaSecs * 1000000 + Secs.
