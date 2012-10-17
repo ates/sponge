@@ -43,7 +43,7 @@ handle_call({get, Key}, _From, State) ->
     Result = case mnesia:dirty_read(?TABLE, Key) of
         [] ->
             undefined;
-        [Entry] when Entry#sponge_warehouse.expired_at =< Now ->
+        [Entry] when Entry#sponge_warehouse.expired_at =< Now andalso Entry#sponge_warehouse.expired_at /= 0 ->
             sponge_sweeper:sweep(Key),
             undefined;
         [Entry] when is_record(Entry, ?TABLE) ->
@@ -109,8 +109,13 @@ do_transaction(#sponge_warehouse{key = Key} = Entry) ->
     end.
 
 do_set(Key, Value, TTL) ->
+    ExpiredAt = case TTL of
+        0 -> 0;
+        _ ->
+            sponge_lib:timestamp() + TTL
+    end,
     Entry = #sponge_warehouse{
         key = Key, value = Value,
-        expired_at = sponge_lib:timestamp() + TTL
+        expired_at = ExpiredAt
     },
     do_transaction(Entry).

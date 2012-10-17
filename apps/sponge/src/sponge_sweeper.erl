@@ -22,7 +22,7 @@ sweep(Key) ->
     gen_server:cast(?MODULE, {sweep, Key}).
 
 init([]) ->
-    Interval = sponge_lib:get_option(ttl, ?DEFAULT_TTL),
+    Interval = sponge_lib:get_option(sweep_interval, ?DEFAULT_INTERVAL),
     Timer = erlang:send_after(Interval, self(), expire_all),
     {ok, #state{timer = Timer, interval = Interval * 1000}}.
 
@@ -39,7 +39,9 @@ handle_cast(_Msg, State) -> {noreply, State}.
 handle_info(expire_all, State) ->
     erlang:cancel_timer(State#state.timer),
     Now = sponge_lib:timestamp(),
-    Guard = fun(E) -> E#sponge_warehouse.expired_at =< Now end,
+    Guard = fun(E) ->
+        E#sponge_warehouse.expired_at =< Now andalso E#sponge_warehouse.expired_at /= 0
+    end,
     Fun = fun(E) -> sweep_entry(E#sponge_warehouse.key) end,
     traverse_all(Guard, Fun),
     Timer = erlang:send_after(State#state.interval, self(), expire_all),
