@@ -39,8 +39,12 @@ init([Nodes, TTL]) ->
     {ok, #state{ttl = TTL}}.
 
 handle_call({get, Key}, _From, State) ->
+    Now = sponge_lib:timestamp(),
     Result = case mnesia:dirty_read(?TABLE, Key) of
         [] ->
+            undefined;
+        [Entry] when Entry#sponge_warehouse.expired_at =< Now ->
+            sponge_sweeper:sweep(Key),
             undefined;
         [Entry] when is_record(Entry, ?TABLE) ->
             Entry#sponge_warehouse.value
@@ -96,15 +100,17 @@ terminate(_Reason, _State) -> ok.
 %% Internal functions
 
 -spec do_transaction(#sponge_warehouse{}) -> ok.
-do_transaction(#sponge_warehouse{key = Key, ttl = TTL} = Entry) ->
+do_transaction(#sponge_warehouse{key = Key} = Entry) ->
     case mnesia:transaction(fun() -> mnesia:write(Entry) end) of
-        {atomic, ok} ->
-            sponge_sweeper:schedule_sweep(Key, TTL);
+        {atomic, ok} -> ok;
         {aborted, Reason} ->
             ?ERROR("Can't perform transaction for key ~p due to: ~s~n",
                 [Key, mnesia:error_description(Reason)])
     end.
 
 do_set(Key, Value, TTL) ->
-    Entry = #sponge_warehouse{key = Key, value = Value, ttl = TTL},
+    Entry = #sponge_warehouse{
+        key = Key, value = Value,
+        expired_at = sponge_lib:timestamp() + TTL
+    },
     do_transaction(Entry).

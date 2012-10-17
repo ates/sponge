@@ -1,6 +1,6 @@
 -module(sponge_lib).
 
--export([get_option/1, get_option/2]).
+-export([get_option/1, get_option/2, timestamp/0]).
 
 get_option(Option) ->
     get_option(Option, undefined).
@@ -12,3 +12,7 @@ get_option(Option, Default) ->
         undefined ->
             Default
     end.
+
+timestamp() ->
+    {MegaSecs, Secs, _} = erlang:now(),
+    MegaSecs * 1000000 + Secs.
