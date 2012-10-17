@@ -11,19 +11,21 @@
 
 -include("sponge.hrl").
 
--record(state, {}).
-
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    {ok, #state{}}.
+    {ok, no_state}.
 
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
 handle_call(_Request, _From, State) -> {reply, ok, State}.
 handle_cast(_Msg, State) -> {noreply, State}.
 
+handle_info({sweep, Key}, State) ->
+    ?INFO("Sweeping key ~p~n", [Key]),
+    mnesia:dirty_delete(?TABLE, Key),
+    {noreply, State};
 handle_info(_Msg, State) ->
     {noreply, State}.
 

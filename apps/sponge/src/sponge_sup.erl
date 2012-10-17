@@ -9,7 +9,7 @@
 -export([init/1]).
 
 -define(SPEC(M), {M, {M, start_link, []}, permanent, 5000, worker, [M]}).
--define(CHILDRENS, [sponge_warehouse, sponge_killer]).
+-define(CHILDRENS, [sponge_warehouse, sponge_sweeper]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).

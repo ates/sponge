@@ -11,13 +11,14 @@
 
 -include("sponge.hrl").
 
--record(state, {}).
+-record(state, {ttl :: pos_integer()}).
 
 start_link() ->
-    Nodes = get_option(nodes, []),
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [Nodes], []).
+    Nodes = sponge_lib:get_option(nodes, []),
+    TTL = sponge_lib:get_option(ttl, ?DEFAULT_TTL),
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [Nodes, TTL], []).
 
-init([Nodes]) ->
+init([Nodes, TTL]) ->
     lists:foreach(fun(N) -> net_kernel:connect_node(N) end, Nodes),
     case nodes() of
         [] ->
@@ -35,7 +36,7 @@ init([Nodes]) ->
             mnesia:add_table_copy(?TABLE, node(), ram_copies),
             mnesia:wait_for_tables([?TABLE], 30000)
     end,
-    {ok, #state{}}.
+    {ok, #state{ttl = TTL}}.
 
 handle_call({get, Key}, _From, State) ->
     Result = case mnesia:dirty_read(?TABLE, Key) of
@@ -45,21 +46,27 @@ handle_call({get, Key}, _From, State) ->
             Entry#sponge_warehouse.value
     end,
     {reply, Result, State};
-handle_call({set, Entry}, _From, State) ->
-    Key = Entry#sponge_warehouse.key,
-    TTL = Entry#sponge_warehouse.ttl,
-    case mnesia:transaction(fun() -> mnesia:write(Entry) end) of
-        {atomic, ok} ->
-            {ok, _} = timer:send_after(TTL, sponge_killer, {kill, Key}),
-            {reply, ok, State};
-        Error ->
-            ?ERROR("Can't do transaction: ~p~n", [Error]),
-            {reply, Error, State}
-    end;
+handle_call({set, Key, Value, TTL}, _From, State) ->
+    Entry = #sponge_warehouse{key = Key, value = Value, ttl = TTL},
+    do_transaction(Entry),
+    {reply, ok, State};
 
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
 handle_call(_Request, _From, State) -> {reply, ok, State}.
+
+handle_cast({incr, Key, Incr}, State) ->
+    Entry = case mnesia:dirty_read(?TABLE, Key) of
+        [Result] when is_integer(Result#sponge_warehouse.value) ->
+            Result#sponge_warehouse{value = Result#sponge_warehouse.value + Incr};
+        [Result] when is_record(Result, ?TABLE) ->
+            ?ERROR("The value for key ~p can't be incremented~n", [Key]);
+        [] ->
+            #sponge_warehouse{key = Key, value = Incr, ttl = State#state.ttl}
+    end,
+    do_transaction(Entry),
+    {noreply, State};
+
 handle_cast(_Msg, State) -> {noreply, State}.
 
 handle_info(_Msg, State) ->
@@ -68,10 +75,15 @@ handle_info(_Msg, State) ->
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 terminate(_Reason, _State) -> ok.
 
-get_option(Option, Default) ->
-    case application:get_env(sponge, Option) of
-        {ok, Value} ->
-            Value;
-        undefined ->
-            Default
+%% Internal functions
+
+-spec do_transaction(#sponge_warehouse{}) -> ok.
+do_transaction(Entry) ->
+    case mnesia:transaction(fun() -> mnesia:write(Entry) end) of
+        {atomic, ok} ->
+            Key = Entry#sponge_warehouse.key,
+            TTL = Entry#sponge_warehouse.ttl,
+            {ok, _} = timer:send_after(TTL, sponge_sweeper, {sweep, Key});
+        Error ->
+            ?ERROR("Can't do transaction: ~p~n", [Error])
     end.
