@@ -79,7 +79,7 @@ handle_cast({decr, Key, Decr}, State) ->
             },
             do_transaction(Entry);
         [Result] when is_record(Result, ?TABLE) ->
-            ?ERROR("The value for key ~p can't be incremented~n", [Key]);
+            ?ERROR("The value for key ~p can't be decremented~n", [Key]);
         [] ->
             do_set(Key, Decr, State#state.ttl)
     end,
@@ -100,8 +100,9 @@ do_transaction(#sponge_warehouse{key = Key, ttl = TTL} = Entry) ->
     case mnesia:transaction(fun() -> mnesia:write(Entry) end) of
         {atomic, ok} ->
             sponge_sweeper:schedule_sweep(Key, TTL);
-        Error ->
-            ?ERROR("Can't do transaction: ~p~n", [Error])
+        {aborted, Reason} ->
+            ?ERROR("Can't perform transaction for key ~p due to: ~s~n",
+                [Key, mnesia:error_description(Reason)])
     end.
 
 do_set(Key, Value, TTL) ->
