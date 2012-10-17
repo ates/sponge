@@ -15,7 +15,7 @@ clean:
 	@$(REBAR) clean
 
 test:
-	@$(REBAR) eunit xref
+	@$(REBAR) eunit xref skip_deps=true
 
 release: test
 	@$(REBAR) generate
