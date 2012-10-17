@@ -1,7 +1,7 @@
 -module(sponge).
 
 %% API
--export([start/0, get/1, set/2, set/3, incr/1, incr/2]).
+-export([start/0, get/1, set/2, set/3, incr/1, incr/2, decr/1, decr/2]).
 -export([uptime/0, debug/1]).
 
 -include("sponge.hrl").
@@ -16,10 +16,9 @@ get(Key) ->
     gen_server:call(sponge_warehouse, {get, Key}).
 
 set(Key, Value) ->
-    TTL = sponge_lib:get_option(ttl, ?DEFAULT_TTL),
-    set(Key, Value, TTL).
+    set(Key, Value, default).
 
-set(Key, Value, TTL) when is_integer(TTL) ->
+set(Key, Value, TTL) ->
     gen_server:call(sponge_warehouse, {set, Key, Value, TTL}).
 
 incr(Key) ->
@@ -27,6 +26,12 @@ incr(Key) ->
 
 incr(Key, Incr) ->
     gen_server:cast(sponge_warehouse, {incr, Key, Incr}).
+
+decr(Key) ->
+    decr(Key, 1).
+
+decr(Key, Decr) ->
+    gen_server:cast(sponge_warehouse, {decr, Key, Decr}).
 
 -spec uptime() -> {non_neg_integer(), calendar:time()}.
 uptime() ->

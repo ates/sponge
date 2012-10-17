@@ -7,7 +7,7 @@
 -define(DEBUG(Format), lager:log(debug, self(), Format, [])).
 -define(DEBUG(Format, Args), lager:log(debug, self(), Format, Args)).
 
--define(DEFAULT_TTL, 10000). % 10 seconds
+-define(DEFAULT_TTL, 86400000).
 
 -define(TABLE, sponge_warehouse).
 

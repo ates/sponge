@@ -46,9 +46,11 @@ handle_call({get, Key}, _From, State) ->
             Entry#sponge_warehouse.value
     end,
     {reply, Result, State};
-handle_call({set, Key, Value, TTL}, _From, State) ->
-    Entry = #sponge_warehouse{key = Key, value = Value, ttl = TTL},
-    do_transaction(Entry),
+handle_call({set, Key, Value, default}, _From, State) ->
+    do_set(Key, Value, State#state.ttl),
+    {reply, ok, State};
+handle_call({set, Key, Value, TTL}, _From, State) when is_integer(TTL) ->
+    do_set(Key, Value, TTL),
     {reply, ok, State};
 
 handle_call(stop, _From, State) ->
@@ -56,15 +58,31 @@ handle_call(stop, _From, State) ->
 handle_call(_Request, _From, State) -> {reply, ok, State}.
 
 handle_cast({incr, Key, Incr}, State) ->
-    Entry = case mnesia:dirty_read(?TABLE, Key) of
+    case mnesia:dirty_read(?TABLE, Key) of
         [Result] when is_integer(Result#sponge_warehouse.value) ->
-            Result#sponge_warehouse{value = Result#sponge_warehouse.value + Incr};
+            Entry = Result#sponge_warehouse{
+                value = Result#sponge_warehouse.value + Incr
+            },
+            do_transaction(Entry);
         [Result] when is_record(Result, ?TABLE) ->
             ?ERROR("The value for key ~p can't be incremented~n", [Key]);
         [] ->
-            #sponge_warehouse{key = Key, value = Incr, ttl = State#state.ttl}
+            do_set(Key, Incr, State#state.ttl)
     end,
-    do_transaction(Entry),
+    {noreply, State};
+
+handle_cast({decr, Key, Decr}, State) ->
+    case mnesia:dirty_read(?TABLE, Key) of
+        [Result] when is_integer(Result#sponge_warehouse.value) ->
+            Entry = Result#sponge_warehouse{
+                value = Result#sponge_warehouse.value - Decr
+            },
+            do_transaction(Entry);
+        [Result] when is_record(Result, ?TABLE) ->
+            ?ERROR("The value for key ~p can't be incremented~n", [Key]);
+        [] ->
+            do_set(Key, Decr, State#state.ttl)
+    end,
     {noreply, State};
 
 handle_cast(_Msg, State) -> {noreply, State}.
@@ -78,12 +96,14 @@ terminate(_Reason, _State) -> ok.
 %% Internal functions
 
 -spec do_transaction(#sponge_warehouse{}) -> ok.
-do_transaction(Entry) ->
+do_transaction(#sponge_warehouse{key = Key, ttl = TTL} = Entry) ->
     case mnesia:transaction(fun() -> mnesia:write(Entry) end) of
         {atomic, ok} ->
-            Key = Entry#sponge_warehouse.key,
-            TTL = Entry#sponge_warehouse.ttl,
-            {ok, _} = timer:send_after(TTL, sponge_sweeper, {sweep, Key});
+            sponge_sweeper:schedule_sweep(Key, TTL);
         Error ->
             ?ERROR("Can't do transaction: ~p~n", [Error])
     end.
+
+do_set(Key, Value, TTL) ->
+    Entry = #sponge_warehouse{key = Key, value = Value, ttl = TTL},
+    do_transaction(Entry).
