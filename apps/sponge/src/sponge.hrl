@@ -13,5 +13,5 @@
 -record(sponge_warehouse, {
     key :: term(),
     value :: term(),
-    expired_at :: pos_integer()
+    expired_at :: non_neg_integer()
 }).
