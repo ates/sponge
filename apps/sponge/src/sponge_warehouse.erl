@@ -22,7 +22,7 @@ init([Nodes, TTL]) ->
     lists:foreach(fun(N) -> net_kernel:connect_node(N) end, Nodes),
     case nodes() of
         [] ->
-            ?INFO("No nodes were found~n", []),
+            ?INFO("No additional nodes were found~n"),
             mnesia:create_schema([node()]),
             mnesia:start(),
             mnesia:create_table(?TABLE, [
@@ -30,7 +30,7 @@ init([Nodes, TTL]) ->
                 {attributes, record_info(fields, ?TABLE)}
             ]);
         N ->
-            ?INFO("Found active nodes: ~p~n", [N]),
+            ?INFO("Connected nodes: ~s~n", [nodes_to_string(N)]),
             mnesia:start(),
             mnesia:change_config(extra_db_nodes, N),
             mnesia:add_table_copy(?TABLE, node(), ram_copies),
@@ -116,3 +116,6 @@ do_set(Key, Value, TTL) ->
         expired_at = ExpiredAt
     },
     do_transaction(Entry).
+
+nodes_to_string(Nodes) ->
+    string:join([atom_to_list(N) || N <- Nodes], ",").
