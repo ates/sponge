@@ -2,4 +2,5 @@ ebin
 deps
 log
 .eunit
+mnesia
 rel/sponge

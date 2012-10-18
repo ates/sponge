@@ -26,7 +26,6 @@ run:
 	$(LIBS) erl -boot start_sasl \
 		-config rel/files/sys.config \
 		-args_file rel/files/vm.args \
-		-mnesia dir '"/tmp/sponge"' \
 		-sponge profile $(PROFILE) \
 		-sponge debug $(DEBUG) \
 		-s sponge

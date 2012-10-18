@@ -36,6 +36,8 @@ init([Nodes, TTL]) ->
             mnesia:add_table_copy(?TABLE, node(), ram_copies),
             mnesia:wait_for_tables([?TABLE], 30000)
     end,
+    pg2:create(?GROUP),
+    pg2:join(?GROUP, self()),
     {ok, #state{ttl = TTL}}.
 
 handle_call({get, Key}, _From, State) ->

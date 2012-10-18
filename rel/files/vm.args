@@ -1,8 +1,5 @@
 ## Name of the node
--name sponge@127.0.0.1
-
-## Cookie for distributed erlang
--setcookie sponge
+-sname sponge
 
 ## Heartbeat management; auto-restarts VM if it dies or becomes unresponsive
 ## (Disabled by default..use with caution!)
@@ -13,6 +10,8 @@
 ##+A 5
 
 -env ERL_CRASH_DUMP log/erl_crash.dump
+
+-mnesia dir '"mnesia"'
 
 -mnesia dc_dump_limit 40
 

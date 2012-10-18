@@ -7,6 +7,7 @@
 -define(DEBUG(Format), lager:log(debug, self(), Format, [])).
 -define(DEBUG(Format, Args), lager:log(debug, self(), Format, Args)).
 
+-define(GROUP, sponge).
 -define(TABLE, sponge_warehouse).
 
 -record(sponge_warehouse, {
