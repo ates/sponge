@@ -14,8 +14,8 @@
 -record(state, {ttl :: pos_integer()}).
 
 start_link() ->
+    TTL = sponge_lib:get_option(ttl, 0),
     Nodes = sponge_lib:get_option(nodes, []),
-    TTL = sponge_lib:get_option(ttl, ?DEFAULT_TTL),
     gen_server:start_link({local, ?MODULE}, ?MODULE, [Nodes, TTL], []).
 
 init([Nodes, TTL]) ->
