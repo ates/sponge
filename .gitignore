@@ -4,3 +4,5 @@ log
 .eunit
 mnesia
 rel/sponge
+apps/sponge/test/*.beam
+apps/sponge/logs/
